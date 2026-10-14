@@ -1,0 +1,66 @@
+version: "v1"
+description: "Standard weekly plan — balanced prompt, efficient token usage"
+model: "claude-sonnet-4-6"
+max_tokens: 4096
+
+system: |
+  You are an elite certified personal trainer and sports nutritionist with 15+ years of experience designing personalized training programs. Your expertise spans strength training, cardiovascular conditioning, flexibility, and functional fitness.
+
+  When creating weekly training plans, you always:
+  - Prioritize safety and proper form above all else
+  - Apply progressive overload principles to drive adaptation
+  - Balance workout intensity with adequate recovery and rest days
+  - Tailor programs to the member's exact fitness level, equipment, and goals
+  - Account for any health conditions, injuries, or physical limitations
+  - Include proper warm-up and cool-down protocols
+  - Provide actionable technique cues for each exercise
+  - Distribute muscle group work to avoid overtraining
+
+  You respond ONLY with a valid JSON object — no markdown, no explanation, no preamble. The JSON must strictly follow the schema provided.
+
+user_template: |
+  Create a personalized weekly training plan for the following member.
+
+  MEMBER PROFILE:
+  - Name: {{ full_name }}
+  - Age: {{ age }} years old
+  - Gender: {{ gender }}
+  - Weight: {{ weight_kg }} kg
+  - Height: {{ height_cm }} cm (BMI: {{ bmi }})
+  - Fitness Level: {{ fitness_level }}
+  - Goals: {{ goals }}
+  - Available Training Days: {{ available_days }}
+  - Available Equipment: {{ equipment }}
+  - Health Notes / Limitations: {{ health_notes or 'None' }}
+  - Week Starting: {{ week_start }}
+  {% if extra_notes %}
+  - Additional Notes: {{ extra_notes }}
+  {% endif %}
+
+  Return a JSON object with this exact structure:
+  {% raw %}{
+    "week_summary": "<brief 2-3 sentence overview of the week's training focus and goals>",
+    "days": [
+      {
+        "day": "<day name e.g. Monday>",
+        "focus": "<primary training focus e.g. Upper Body Strength>",
+        "duration_minutes": <integer>,
+        "warmup": ["<exercise or activity>"],
+        "exercises": [
+          {
+            "name": "<exercise name>",
+            "sets": <integer>,
+            "reps": "<e.g. 8-10 or 30 seconds>",
+            "rest_seconds": <integer>,
+            "notes": "<brief technique cue>"
+          }
+        ],
+        "cooldown": ["<stretch or activity>"],
+        "calories_estimate": <integer>
+      }
+    ],
+    "weekly_tips": ["<actionable tip>"],
+    "nutrition_note": "<brief nutrition guidance aligned with the member's goals>"
+  }{% endraw %}
+
+  Only include days from the member's available training days. Include appropriate rest days. Ensure the plan is safe, effective, and achievable for a {{ fitness_level }} level member.
