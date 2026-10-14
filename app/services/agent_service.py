@@ -88,8 +88,8 @@ class AgentService:
 
         try:
             response = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=4096,
+                model=settings.ANTHROPIC_MODEL,
+                max_tokens=settings.ANTHROPIC_MAX_TOKENS,
                 system=[
                     {
                         "type": "text",
