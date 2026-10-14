@@ -26,9 +26,9 @@ You respond ONLY with a valid JSON object — no markdown, no explanation, no pr
 def _build_user_prompt(profile: MemberProfile, week_start: date, extra_notes: str | None) -> str:
     bmi = round(profile.weight_kg / ((profile.height_cm / 100) ** 2), 1)
     lines = [
-        f"Create a personalized weekly training plan for the following member.",
-        f"",
-        f"MEMBER PROFILE:",
+        "Create a personalized weekly training plan for the following member.",
+        "",
+        "MEMBER PROFILE:",
         f"- Name: {profile.full_name}",
         f"- Age: {profile.age} years old",
         f"- Gender: {profile.gender}",
@@ -42,76 +42,77 @@ def _build_user_prompt(profile: MemberProfile, week_start: date, extra_notes: st
         f"- Week Starting: {week_start.strftime('%A, %B %d, %Y')}",
     ]
     if extra_notes:
-        lines += [f"- Additional Notes: {extra_notes}"]
+        lines.append(f"- Additional Notes: {extra_notes}")
 
     lines += [
-        f"",
-        f"Return a JSON object with this exact structure:",
-        f"""{{
+        "",
+        "Return a JSON object with this exact structure:",
+        """{
   "week_summary": "<brief 2-3 sentence overview of the week's training focus and goals>",
   "days": [
-    {{
+    {
       "day": "<day name e.g. Monday>",
       "focus": "<primary training focus e.g. Upper Body Strength>",
       "duration_minutes": <integer>,
       "warmup": ["<exercise or activity>", ...],
       "exercises": [
-        {{
+        {
           "name": "<exercise name>",
           "sets": <integer>,
           "reps": "<e.g. 8-10 or 30 seconds>",
           "rest_seconds": <integer>,
           "notes": "<brief technique cue>"
-        }}
+        }
       ],
       "cooldown": ["<stretch or activity>", ...],
       "calories_estimate": <integer>
-    }}
+    }
   ],
   "weekly_tips": ["<actionable tip>", ...],
   "nutrition_note": "<brief nutrition guidance aligned with the member's goals>"
-}}""",
-        f"",
+}""",
+        "",
         f"Only include days from the member's available training days. Include appropriate rest days. Ensure the plan is safe, effective, and achievable for a {profile.fitness_level} level member.",
     ]
     return "\n".join(lines)
 
 
-async def generate_weekly_plan(
-    profile: MemberProfile,
-    week_start: date,
-    extra_notes: str | None = None,
-) -> dict:
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+class AgentService:
+    async def generate_weekly_plan(
+        self,
+        profile: MemberProfile,
+        week_start: date,
+        extra_notes: str | None = None,
+    ) -> dict:
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
-    try:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            system=[
-                {
-                    "type": "text",
-                    "text": SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            messages=[
-                {
-                    "role": "user",
-                    "content": _build_user_prompt(profile, week_start, extra_notes),
-                }
-            ],
-        )
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=4096,
+                system=[
+                    {
+                        "type": "text",
+                        "text": SYSTEM_PROMPT,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": _build_user_prompt(profile, week_start, extra_notes),
+                    }
+                ],
+            )
 
-        raw = response.content[0].text.strip()
+            raw = response.content[0].text.strip()
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+            return json.loads(raw)
 
-        # Strip markdown code fences if model wraps in them
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
-
-        return json.loads(raw)
-
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=503, detail=f"Agent returned malformed JSON: {exc}") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"AI service unavailable: {exc}") from exc
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=503, detail=f"Agent returned malformed JSON: {exc}"
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"AI service unavailable: {exc}") from exc

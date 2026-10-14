@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.controllers import auth_controller, plan_controller, profile_controller
 from app.database import Base, engine
-from app.routers import auth, plans, profile
 
 
 @asynccontextmanager
@@ -24,9 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(profile.router)
-app.include_router(plans.router)
+app.include_router(auth_controller.router)
+app.include_router(profile_controller.router)
+app.include_router(plan_controller.router)
 
 
 @app.get("/health")
